@@ -22,23 +22,29 @@ interface MapViewProps {
 }
 
 export default function MapView({ center, markers = [], polylines = [], level = 5 }: MapViewProps) {
+  console.log("🔵 MapView 렌더링됨!", { center, markers, polylines, level });
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<kakao.maps.Marker[]>([]);
   const polylinesRef = useRef<kakao.maps.Polyline[]>([]);
-  const isInitializedRef = useRef(false);
 
-  // 1. 맵 초기화 (최초 1회만)
+  // 1. 맵 초기화 (최초 1회만) - 의존성 배열 비움!
   useEffect(() => {
-    if (isInitializedRef.current || !containerRef.current) return;
+    if (!containerRef.current || !center) {
+      console.log("⚠️ 컨테이너 또는 center가 없음", { containerRef: !!containerRef.current, center });
+      return;
+    }
 
     let isCancelled = false;
+
+    console.log("🚀 맵 초기화 시작...", center);
 
     loadKakaoMaps()
       .then(() => {
         if (isCancelled || !containerRef.current || !center) return;
 
-        console.log("🗺️ 지도 초기화 중...", center);
+        console.log("🗺️ 지도 생성 중...", center);
         
         const initialCenter = new kakao.maps.LatLng(center.lat, center.lng);
         mapRef.current = new kakao.maps.Map(containerRef.current, {
@@ -46,8 +52,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
           level: level,
         });
         
-        isInitializedRef.current = true;
-        console.log("✅ 지도 초기화 완료");
+        console.log("✅ 지도 초기화 완료!");
       })
       .catch((err) => {
         console.error("❌ 카카오맵 로드 실패:", err);
@@ -56,7 +61,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
     return () => {
       isCancelled = true;
     };
-  }, [center, level]); // center와 level 의존성 추가
+  }, [center]); // ✅ center가 준비되면 실행!
 
   // 2. 컴포넌트 언마운트 시 정리
   useEffect(() => {
@@ -70,7 +75,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
 
   // 3. 중심 좌표 업데이트
   useEffect(() => {
-    if (!mapRef.current || !center) return;
+    if (!mapRef.current) return;
     
     const newCenter = new kakao.maps.LatLng(center.lat, center.lng);
     mapRef.current.setCenter(newCenter);
@@ -81,15 +86,21 @@ export default function MapView({ center, markers = [], polylines = [], level = 
   useEffect(() => {
     if (!mapRef.current) return;
     mapRef.current.setLevel(level);
+    console.log("🔍 줌 레벨 변경:", level);
   }, [level]);
 
   // 5. 마커 업데이트
   useEffect(() => {
-    if (!mapRef.current || !isInitializedRef.current) return;
+    if (!mapRef.current) return;
 
     // 기존 마커 제거
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
+
+    if (markers.length === 0) {
+      console.log("📍 마커 없음");
+      return;
+    }
 
     console.log("📍 마커 추가:", markers.length + "개");
 
@@ -123,7 +134,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
         map: mapRef.current!,
         position: position,
         content: content,
-        yAnchor: 2.2, // 마커 위에 표시
+        yAnchor: 2.2,
       });
 
       markersRef.current.push(marker);
@@ -132,7 +143,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
 
   // 6. 폴리라인(경로선) 업데이트
   useEffect(() => {
-    if (!mapRef.current || !isInitializedRef.current) return;
+    if (!mapRef.current) return;
 
     // 기존 폴리라인 제거
     polylinesRef.current.forEach(polyline => polyline.setMap(null));
@@ -144,7 +155,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
 
     // 새 폴리라인 추가
     polylines.forEach((polylineData) => {
-      if (polylineData.path.length < 2) return; // 최소 2개 점 필요
+      if (polylineData.path.length < 2) return;
 
       const linePath = polylineData.path.map(
         coord => new kakao.maps.LatLng(coord.lat, coord.lng)
@@ -178,7 +189,7 @@ export default function MapView({ center, markers = [], polylines = [], level = 
         height: "60vh",
         borderRadius: 12,
         border: "1px solid #e5e7eb",
-        backgroundColor: "#f5f5f5", // 로딩 중 배경색
+        backgroundColor: "#f5f5f5",
       }}
     />
   );

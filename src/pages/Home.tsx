@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import MapView from "../components/MapView";
 import { getCurrentPosition } from "../lib/geo";
 import { fetchOSRMRoute } from "../lib/routing";
@@ -13,23 +13,26 @@ function maskKey(k?: string) {
 export default function Home() {
   const appkey = import.meta.env.VITE_KAKAO_APPKEY as string | undefined;
 
-  // 기본 중심(서울 시청), 임시 도착지(경복궁 근처)
-  const [center, setCenter] = useState<Coord>({ lat: 37.5665, lng: 126.9780 });
+  // 기본 중심 좌표 (서울 시청)
+  const DEFAULT_CENTER: Coord = { lat: 37.5665, lng: 126.9780 };
+  
   const [my, setMy] = useState<Coord | null>(null);
-  const [dest, setDest] = useState<Coord>({ lat: 37.5796, lng: 126.9770 });
+  const [dest] = useState<Coord>({ lat: 37.5796, lng: 126.9770 });
   const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
   const [meta, setMeta] = useState<{ km: number; min: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const mapCenter = useMemo(() => my ?? center, [my, center]);
+  // 지도 중심: 내 위치가 있으면 내 위치, 없으면 기본 중심
+  const mapCenter = my || DEFAULT_CENTER;
+  
+  console.log("🏠 Home 렌더링:", { my, mapCenter });
 
   async function handleLocate() {
     setErr(null);
     try {
       const pos = await getCurrentPosition();
       setMy(pos);
-      setCenter(pos);
     } catch (e: any) {
       setErr(e?.message ?? "위치 정보를 가져올 수 없어요");
     }
