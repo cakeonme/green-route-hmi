@@ -66,7 +66,8 @@ export function loadKakaoMaps(): Promise<typeof window.kakao> {
     // 4. 새로 스크립트 로드
     console.log("🚀 Loading Kakao SDK...");
     const script = document.createElement("script");
-    script.src = `${KAKAO_SDK_URL}?appkey=${appkey}&autoload=false&libraries=services`;
+    // ✅ libraries=services,clusterer 를 추가하여 두 라이브러리를 모두 로드
+    script.src = `${KAKAO_SDK_URL}?appkey=${appkey}&autoload=false&libraries=services,clusterer`;
     script.async = true;
     script.defer = true;
     script.setAttribute("data-kakao-sdk", "true");
