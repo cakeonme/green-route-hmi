@@ -1,143 +1,106 @@
-import { useState, useEffect } from 'react';
-import MapView from './components/MapView';
-import { getDirections } from './lib/kakaoNavi';
-import { getCoordinates } from './lib/kakaoLocal';
+import React, { useState, useEffect } from "react";
+import { Home as HomeIcon, Settings, Map, FileText } from 'lucide-react';
 
-// 지도에 표시할 초기 중심 좌표
-const DEFAULT_CENTER = { lat: 37.566826, lng: 126.9786567 }; // 서울 시청
+// 페이지 컴포넌트들 불러오기
+import HomePage from "./pages/Home";
+import SettingsPage from "./pages/Settings";
+import Settings2Page from "./pages/Settings2";
+import MainPage from "./pages/Main";
 
 export default function App() {
-  const [mapCenter, setMapCenter] = useState(null);
-  const [markers, setMarkers] = useState([]);
-  const [polylines, setPolylines] = useState([]);
-  const [error, setError] = useState('');
-  const [startAddress, setStartAddress] = useState('건대입구역'); // 출발지 주소 상태
-  const [endAddress, setEndAddress] = useState('서울시청'); // 목적지 주소 상태
+  // 페이지 상태: home, settings, settings-detail, nav-loading, main, report
+  const [page, setPage] = useState<string>('home');
 
+  // ★ 로딩 화면 타이머 효과 ★
+  // 페이지가 'nav-loading' 상태가 되면, 3.5초 뒤에 자동으로 'main'으로 넘겨줍니다.
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError('Geolocation을 지원하지 않는 브라우저입니다.');
-      setMapCenter(DEFAULT_CENTER);
-      return;
+    if (page === 'nav-loading') {
+      const timer = setTimeout(() => {
+        setPage('main');
+      }, 3500); // 3.5초 대기 (원하시면 숫자를 5000으로 바꾸면 5초가 됩니다)
+      return () => clearTimeout(timer);
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newCenter = { lat: latitude, lng: longitude };
-
-        console.log('✅ 현재 위치를 성공적으로 가져옴:', newCenter);
-        setMapCenter(newCenter);
-        setError('');
-
-        setMarkers([{
-          lat: latitude,
-          lng: longitude,
-          label: '내 위치'
-        }]);
-      },
-      (geoError) => {
-        let errorMessage = '';
-        if (geoError.code === geoError.PERMISSION_DENIED) {
-          errorMessage = '위치 권한이 거부되었습니다.';
-        } else {
-          errorMessage = '위치 정보를 가져오는 데 실패했습니다.';
-        }
-        console.error('❌ 위치 권한 오류:', errorMessage);
-        setError(errorMessage);
-        setMapCenter(DEFAULT_CENTER);
-        setMarkers([]);
-      }
-    );
-  }, []);
-
-  const handleSearchRoute = async () => {
-    try {
-      if (!startAddress || !endAddress) {
-        alert("출발지와 목적지를 모두 입력해주세요.");
-        return;
-      }
-
-      // 주소-좌표 변환
-      const startCoord = await getCoordinates(startAddress);
-      const endCoord = await getCoordinates(endAddress);
-
-      if (!startCoord || !endCoord) {
-        alert("유효하지 않은 주소입니다. 다시 확인해주세요.");
-        return;
-      }
-      
-      // 경로 탐색 API 호출
-      const routeData = await getDirections(startCoord, endCoord);
-
-      if (routeData && routeData.routes && routeData.routes.length > 0) {
-        const path = routeData.routes[0].sections.flatMap(section => 
-          section.roads.flatMap(road => 
-            road.vertexes.reduce((acc, coord, index) => {
-              if (index % 2 === 0) {
-                acc.push({ lat: road.vertexes[index + 1], lng: coord });
-              }
-              return acc;
-            }, [])
-          )
-        );
-
-        setPolylines([{
-          path: path,
-          color: '#3b82f6'
-        }]);
-
-        // 경로에 시작, 도착 마커 추가
-        setMarkers([
-          { lat: startCoord.lat, lng: startCoord.lng, label: startAddress },
-          { lat: endCoord.lat, lng: endCoord.lng, label: endAddress },
-        ]);
-
-      } else {
-        console.error('경로 데이터를 가져오지 못했습니다.');
-        setPolylines([]);
-        alert('경로를 찾을 수 없습니다.');
-      }
-    } catch (err) {
-      console.error('경로 탐색 중 오류 발생:', err);
-      setPolylines([]);
-      alert('경로 탐색 중 오류가 발생했습니다.');
-    }
-  };
+  }, [page]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>GreenRoute — 지도 테스트</h1>
-      <div style={{ marginBottom: '10px' }}>
-        <input 
-          type="text" 
-          value={startAddress} 
-          onChange={(e) => setStartAddress(e.target.value)} 
-          placeholder="출발지"
-          style={{ marginRight: '10px', padding: '5px' }}
-        />
-        <input 
-          type="text" 
-          value={endAddress} 
-          onChange={(e) => setEndAddress(e.target.value)} 
-          placeholder="목적지"
-          style={{ padding: '5px' }}
-        />
-        <button 
-          onClick={handleSearchRoute} 
-          style={{ marginLeft: '10px', padding: '5px 10px' }}
-        >
-          경로 탐색
-        </button>
+    <div className="w-screen h-screen bg-black flex flex-col overflow-hidden font-sans">
+      
+      {/* 1. 메인 화면 영역 */}
+      <div className="flex-1 overflow-hidden relative">
+        
+        {/* === HOME PAGE === */}
+        {page === 'home' && <HomePage />}
+        
+        {/* === SETTINGS PAGE === */}
+        {page === 'settings' && (
+            <div onClick={() => setPage('settings-detail')} className="w-full h-full">
+                <SettingsPage />
+            </div>
+        )}
+
+        {/* === SETTINGS 2 PAGE (상세) === */}
+        {/* 안내 시작을 누르면 -> 'nav-loading' (로딩 화면)으로 이동 */}
+        {page === 'settings-detail' && (
+            <Settings2Page 
+                onBack={() => setPage('settings')} 
+                onStartNavigation={() => setPage('nav-loading')} 
+            />
+        )}
+
+        {/* === ★ LOADING SCREEN (임시 화면) ★ === */}
+        {page === 'nav-loading' && (
+            <div className="w-full h-full bg-[#18181b] flex flex-col items-center justify-center text-white animate-fade-in z-50">
+                <div className="text-center">
+                    {/* 아이콘 깜빡임 효과 */}
+                    <Map size={80} className="mx-auto mb-8 text-blue-500 animate-pulse" />
+                    <h2 className="text-3xl font-bold mb-3">경로 안내 중...</h2>
+                    <p className="text-zinc-400 text-lg">서부 YMCA 피트니스로 이동합니다.</p>
+                </div>
+                {/* 로딩 바 장식 */}
+                <div className="mt-12 w-48 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-600 animate-[width_3s_ease-in-out_forwards] w-0"></div>
+                </div>
+            </div>
+        )}
+
+        {/* === MAIN PAGE (진짜 내비게이션) === */}
+        {page === 'main' && <MainPage />}
+
+        {/* === REPORT PAGE === */}
+        {page === 'report' && (
+            <div className="w-full h-full bg-[#f2f4f6] p-6 overflow-y-auto flex items-center justify-center">
+                 <div className="text-slate-400 font-bold text-xl">리포트 화면 준비중</div>
+            </div>
+        )}
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-
-      {mapCenter ? (
-        <MapView center={mapCenter} markers={markers} polylines={polylines} />
-      ) : (
-        <div>위치를 불러오는 중입니다...</div>
-      )}
+      {/* 2. 하단 내비게이션 바 (Dock) */}
+      <div className="h-24 bg-[#18181b] border-t border-white/5 shrink-0 flex items-center justify-center gap-8 pb-4 px-6 z-50">
+        <NavButton active={page === 'home'} onClick={() => setPage('home')} icon={HomeIcon} label="Home" />
+        <NavButton active={page.includes('settings')} onClick={() => setPage('settings')} icon={Settings} label="Settings" />
+        
+        {/* 가운데 버튼을 눌러도 바로 내비게이션으로 가게 할지, 홈으로 가게 할지 선택 가능 */}
+        <button 
+            onClick={() => setPage('main')} 
+            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all transform hover:scale-105 active:scale-95 ${
+                page === 'main' || page === 'nav-loading' ? 'bg-blue-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+            }`}
+        >
+            <Map size={28} fill={page === 'main' ? "currentColor" : "none"} />
+        </button>
+        
+        <NavButton active={page === 'report'} onClick={() => setPage('report')} icon={FileText} label="Report" />
+        <div className="w-12"></div> 
+      </div>
     </div>
   );
+}
+
+function NavButton({ active, onClick, icon: Icon, label }: any) {
+    return (
+        <button onClick={onClick} className={`flex flex-col items-center gap-1 w-12 transition-all ${active ? 'text-blue-500 transform scale-110' : 'text-zinc-500 hover:text-zinc-300'}`}>
+            <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+            <span className="text-[10px] font-medium tracking-tight">{label}</span>
+        </button>
+    )
 }

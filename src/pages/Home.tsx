@@ -1,104 +1,43 @@
-import { useState } from "react";
-import MapView from "../components/MapView";
-import { getCurrentPosition } from "../lib/geo";
-import { fetchOSRMRoute } from "../lib/routing";
-
-type Coord = { lat: number; lng: number };
-
-function maskKey(k?: string) {
-  if (!k) return "(없음)";
-  return k.slice(0, 4) + "****" + k.slice(-4);
-}
+import React, { useState } from "react";
+import HomeHud from "../components/HomeHud"; // 껍데기 디자인
+import { Navigation } from "lucide-react"; // 아이콘
 
 export default function Home() {
-  const appkey = import.meta.env.VITE_KAKAO_APPKEY as string | undefined;
-
-  // 기본 중심 좌표 (서울 시청)
-  const DEFAULT_CENTER: Coord = { lat: 37.5665, lng: 126.9780 };
-  
-  const [my, setMy] = useState<Coord | null>(null);
-  const [dest] = useState<Coord>({ lat: 37.5796, lng: 126.9770 });
-  const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
-  const [meta, setMeta] = useState<{ km: number; min: number } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  // 지도 중심: 내 위치가 있으면 내 위치, 없으면 기본 중심
-  const mapCenter = my || DEFAULT_CENTER;
-  
-  console.log("🏠 Home 렌더링:", { my, mapCenter });
-
-  async function handleLocate() {
-    setErr(null);
-    try {
-      const pos = await getCurrentPosition();
-      setMy(pos);
-    } catch (e: any) {
-      setErr(e?.message ?? "위치 정보를 가져올 수 없어요");
-    }
-  }
-
-  async function handleRoute() {
-    setErr(null);
-    if (!my) return setErr("먼저 '현재 위치'를 가져와 주세요.");
-    setLoading(true);
-    try {
-      // OSRM은 (lng,lat) 순서
-      const res = await fetchOSRMRoute([my.lng, my.lat], [dest.lng, dest.lat]);
-      const poly = res.geometry.coordinates.map((c: number[]) => ({ lat: c[1], lng: c[0] }));
-      setRoutePath(poly);
-      setMeta({ km: res.distanceKm, min: res.durationMin });
-    } catch (e: any) {
-      setErr(e?.message ?? "경로를 가져오지 못했어요");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Home 화면은 로직 없이 '상태 표시'만 합니다.
+  const [speed] = useState(72); // 고정 속도 (예시)
+  const [gear] = useState('D'); // 고정 기어 (예시)
 
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">GreenRoute — 기본 지도 / 내 위치 / 경로</h1>
+    <div className="w-full h-full bg-black">
+      {/* HomeHud: 우리가 만든 아반떼 대시보드 틀 */}
+      <HomeHud speed={speed}>
+        
+        {/* 지도 영역에 들어갈 내용 (Home에서는 그냥 배경 이미지처럼 처리) */}
+        <div className="w-full h-full relative bg-[#2e2e33] flex items-center justify-center overflow-hidden">
+            
+            {/* 1. 지도 배경 패턴 (이미지 대신 CSS로 가볍게 표현) */}
+            <div className="absolute inset-0 opacity-30" 
+                 style={{
+                     backgroundImage: 'radial-gradient(#6b7280 1px, transparent 1px)', 
+                     backgroundSize: '24px 24px'
+                 }}>
+            </div>
+            
+            {/* 2. 도로 느낌의 장식 선 */}
+            <div className="absolute top-0 left-1/2 w-32 h-full bg-white/5 skew-x-12 blur-xl"></div>
 
-      <div className="text-sm text-gray-600">
-        <b>.env 키 확인:</b> {maskKey(appkey)}
-      </div>
+            {/* 3. '목적지 없음' 텍스트 & 아이콘 */}
+            <div className="relative z-10 flex flex-col items-center gap-3">
+                <h2 className="text-4xl font-bold text-white drop-shadow-md tracking-tight">목적지 없음</h2>
+                <div className="flex items-center gap-2 text-zinc-400 text-sm bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10">
+                    <Navigation size={14} className="fill-current" />
+                    <span>내비게이션을 실행하려면 Main으로 이동하세요</span>
+                </div>
+            </div>
 
-      {/* 버튼 */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={handleLocate} className="px-3 py-2 rounded-lg bg-blue-600 text-white">
-          현재 위치
-        </button>
-        <button
-          onClick={handleRoute}
-          className="px-3 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading ? "경로 탐색 중..." : "경로 탐색 (내 위치 → 도착지)"}
-        </button>
-      </div>
+        </div>
 
-      {/* 상태 표시 */}
-      <div className="text-sm text-gray-700 space-y-1">
-        <div>도착지(임시): <code>{dest.lat.toFixed(5)}, {dest.lng.toFixed(5)}</code></div>
-        <div>내 위치: {my ? <code>{my.lat.toFixed(5)}, {my.lng.toFixed(5)}</code> : "—"}</div>
-        {meta && (
-          <div className="p-2 rounded-lg border bg-emerald-50">
-            거리: <b>{meta.km.toFixed(2)} km</b> · 예상 시간: <b>{meta.min.toFixed(0)} 분</b>
-          </div>
-        )}
-        {err && <div className="p-2 rounded bg-red-50 text-red-700">{err}</div>}
-      </div>
-
-      {/* 지도 */}
-      <MapView
-        center={mapCenter}
-        markers={[
-          ...(my ? [{ lat: my.lat, lng: my.lng, label: "내 위치" }] : []),
-          { lat: dest.lat, lng: dest.lng, label: "도착지" },
-        ]}
-        polylines={routePath.length ? [{ path: routePath, color: "#10b981" }] : []}
-        level={my ? 5 : 6}
-      />
+      </HomeHud>
     </div>
   );
 }
