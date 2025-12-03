@@ -1,39 +1,44 @@
 import React, { useState, useEffect } from 'react';
+import WeeklyChart from '../components/WeeklyChart';
+import CalculatorModal from '../components/CalculatorModal'; // ★ 계산기 모달 가져오기
+import { Calculator } from 'lucide-react'; // ★ 아이콘 가져오기
 
 export default function Report() {
   const [time, setTime] = useState(new Date());
+  
+  // ★ 계산기 모달을 띄울지 말지 결정하는 상태
+  const [showCalculator, setShowCalculator] = useState(false);
 
-  // 1초마다 시간 갱신
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const formatDate = (date: Date) => {
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dayName = days[date.getDay()];
-    return `${year}.${month}.${day}(${dayName})`;
+    return "2025.12.04(목)";
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ko-KR', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false // 24시간제 (13:00)
-    });
+    return "12:41";
   };
 
   return (
-    <div className="w-full h-full bg-[#18181b] flex flex-col font-sans overflow-hidden animate-fade-in">
+    <div className="w-full h-full bg-[#18181b] flex flex-col font-sans overflow-hidden animate-fade-in relative">
       
-      {/* 1. 상단 헤더 (검은색 배경) */}
+      {/* 1. 상단 헤더 */}
       <header className="h-20 shrink-0 flex items-center justify-between px-8 bg-[#18181b]">
         <div className="flex items-center gap-3">
             <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span className="text-white font-bold text-lg">어플명</span>
+            <span className="text-white font-bold text-lg">Green Route</span>
+
+            {/* ★★★ 여기에 계산기 버튼을 추가했습니다! ★★★ */}
+            <button 
+                onClick={() => setShowCalculator(true)}
+                className="ml-6 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded-full text-xs font-medium transition-all border border-zinc-700 active:scale-95"
+            >
+                <Calculator size={14} />
+                배출량 계산기
+            </button>
         </div>
         
         <div className="flex gap-6 text-zinc-400 text-sm font-medium">
@@ -53,7 +58,7 @@ export default function Report() {
         
         <div className="w-full h-full flex flex-col md:flex-row gap-16 items-center justify-center">
             
-            {/* === [좌측] 주간 통계 (막대 그래프) === */}
+            {/* === [좌측] 주간 통계 === */}
             <section className="flex-1 w-full max-w-lg h-full flex flex-col justify-center">
                 <div className="flex justify-between items-end mb-10">
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -63,7 +68,6 @@ export default function Report() {
                     <span className="text-slate-400 text-base font-medium">2025.11.24-30</span>
                 </div>
 
-                {/* 범례 */}
                 <div className="flex gap-6 justify-center mb-8 text-xs font-medium">
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-blue-600 rounded-[2px]"></div>
@@ -75,18 +79,15 @@ export default function Report() {
                     </div>
                 </div>
 
-                {/* 막대 그래프 영역 */}
                 <div className="relative h-72 flex items-end justify-between px-2 pt-6">
-                    {/* 배경 그리드 (점선) */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0 text-[10px] text-slate-400 font-medium">
                         {[50, 40, 30, 20, 10, 0].map((val) => (
                             <div key={val} className="w-full border-b border-slate-100 border-dashed h-0 flex items-center">
-                                <span className="absolute -left-12 w-10 text-right">{val === 0 ? '0kg CO₂' : `${val}kg CO₂`}</span>
+                                <span className="absolute -left-12 w-10 text-right">{val === 0 ? '0kg' : `${val}kg`}</span>
                             </div>
                         ))}
                     </div>
 
-                    {/* 데이터 바 */}
                     {[
                         { day: '월', val1: 22, val2: 12 },
                         { day: '화', val1: 28, val2: 18 },
@@ -96,12 +97,9 @@ export default function Report() {
                         { day: '토', val1: 30, val2: 18 },
                         { day: '일', val1: 15, val2: 10 },
                     ].map((item) => (
-                        <div key={item.day} className="relative z-10 flex flex-col items-center gap-3 w-10 group">
-                            {/* 막대 그룹 */}
+                        <div key={item.day} className="relative z-10 flex flex-col items-center gap-3 w-10 group h-full justify-end">
                             <div className="w-full flex flex-col items-center gap-1.5 h-full justify-end">
-                                {/* 파란색 (기존) */}
                                 <div style={{ height: `${item.val1 * 2.5}px` }} className="w-full bg-blue-600 rounded-[4px] relative group-hover:opacity-90 transition-all shadow-sm"></div>
-                                {/* 초록색 (감소) */}
                                 <div style={{ height: `${item.val2 * 2.5}px` }} className="w-full bg-green-500 rounded-[4px] relative group-hover:opacity-90 transition-all shadow-sm"></div>
                             </div>
                             <span className="text-sm text-slate-500 font-medium">{item.day}</span>
@@ -110,10 +108,9 @@ export default function Report() {
                 </div>
             </section>
 
-            {/* 구분선 (데스크탑에서만 보임) */}
             <div className="hidden md:block w-px h-80 bg-slate-100 mx-4"></div>
 
-            {/* === [우측] 월간 통계 (나무 숲 디자인) === */}
+            {/* === [우측] 월간 통계 === */}
             <section className="flex-1 w-full max-w-lg h-full flex flex-col justify-center items-center text-center">
                 <div className="w-full flex justify-between items-end mb-16 px-4">
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight text-left">
@@ -123,15 +120,12 @@ export default function Report() {
                     <span className="text-slate-400 text-base font-medium">2025.11</span>
                 </div>
 
-                {/* ★ 나무 숲 일러스트 (CSS로 구현) ★ */}
                 <div className="relative w-full h-48 flex items-end justify-center mb-8 px-4">
-                    {/* 뒷줄 나무들 (약간 작게, 어둡게) */}
                     <div className="absolute bottom-4 flex justify-center gap-8 w-full px-8">
                         {[1, 2, 3].map((i) => (
                             <Tree key={`back-${i}`} color="bg-[#4d8b31]" size="small" delay={i * 0.2} />
                         ))}
                     </div>
-                    {/* 앞줄 나무들 (크게, 밝게) */}
                     <div className="absolute bottom-0 flex justify-center gap-10 w-full z-10">
                         {[1, 2, 3, 4].map((i) => (
                             <Tree key={`front-${i}`} color="bg-[#74c35a]" size="large" delay={i * 0.1 + 0.5} />
@@ -139,7 +133,6 @@ export default function Report() {
                     </div>
                 </div>
 
-                {/* 텍스트 설명 */}
                 <div className="space-y-3 mt-4">
                     <div className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
                         <span>10월 탄소 감소 효과</span>
@@ -155,11 +148,17 @@ export default function Report() {
 
         </div>
       </main>
+
+      {/* ★ 3. 계산기 모달 (버튼 누르면 뜸) ★ */}
+      {showCalculator && (
+        <CalculatorModal onClose={() => setShowCalculator(false)} />
+      )}
+
     </div>
   );
 }
 
-// ★ 나무 컴포넌트 (CSS로 그림) ★
+// 나무 컴포넌트
 const Tree = ({ color, size, delay }: { color: string, size: 'small' | 'large', delay: number }) => {
     const scale = size === 'large' ? 1 : 0.8;
     const leafSize = size === 'large' ? 'w-20 h-24' : 'w-16 h-20';
@@ -170,12 +169,8 @@ const Tree = ({ color, size, delay }: { color: string, size: 'small' | 'large', 
             className="flex flex-col items-center relative group cursor-pointer" 
             style={{ transform: `scale(${scale})`, animation: `bounce-gentle 3s infinite ease-in-out ${delay}s` }}
         >
-            {/* 나뭇잎 (둥근 타원형) */}
-            <div className={`${leafSize} rounded-full ${color} relative z-10 shadow-sm group-hover:scale-110 transition-transform duration-300`}></div>
-            
-            {/* 나무 기둥 */}
-            <div className={`w-4 ${trunkHeight} bg-[#4a3b2a] -mt-4 relative z-0 rounded-sm`}>
-                {/* 가지 (랜덤하게 뻗음) */}
+            <div className={`${leafSize} rounded-[40px] ${color} relative z-10 shadow-sm group-hover:scale-110 transition-transform duration-300`}></div>
+            <div className={`w-4 ${trunkHeight} bg-[#4a3b2a] -mt-3 relative z-0 rounded-sm`}>
                 <div className="absolute top-2 -left-2 w-3 h-1 bg-[#4a3b2a] rotate-[-45deg] rounded-full"></div>
                 <div className="absolute top-4 -right-2 w-3 h-1 bg-[#4a3b2a] rotate-[30deg] rounded-full"></div>
             </div>

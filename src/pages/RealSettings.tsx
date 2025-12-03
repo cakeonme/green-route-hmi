@@ -42,7 +42,7 @@ export default function RealSettings() {
       <header className="h-20 shrink-0 flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
             <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span className="text-white font-bold text-lg">어플명</span>
+            <span className="text-white font-bold text-lg">Green Route</span>
         </div>
         
         <div className="flex gap-6 text-zinc-400 text-sm font-medium">

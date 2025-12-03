@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Navigation, X, Home, Settings, FileText } from 'lucide-react';
-import MapView from '../components/MapView';
-import { SAMIL_ROUTE_DATA } from '../data/samilRoute'; // ★ 실제 데이터 import
+import navigationMap from '../assets/navigation-map.jpg';
 
 export default function Main() {
   const [time, setTime] = useState(new Date());
@@ -11,11 +10,6 @@ export default function Main() {
     return () => clearInterval(timer);
   }, []);
 
-  // ★ 내 차 위치: 경로 데이터의 중간 지점쯤으로 설정 (주행 중인 느낌)
-  // 배열 인덱스를 바꿔서 차 위치를 조절할 수 있습니다. (예: 6번째 좌표)
-  const CAR_INDEX = 6; 
-  const CAR_POSITION = SAMIL_ROUTE_DATA[CAR_INDEX]; 
-
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
@@ -23,14 +17,14 @@ export default function Main() {
   return (
     <div className="w-full h-full relative bg-black overflow-hidden flex flex-col animate-fade-in">
       
-      {/* 1. 배경 지도 */}
+      {/* 1. 배경 이미지 (지도 대신 사용) */}
       <div className="absolute inset-0 z-0">
-        <MapView 
-            center={CAR_POSITION} 
-            level={1} 
-            markers={[]} 
-            polylines={[{ path: SAMIL_ROUTE_DATA, color: '#3b82f6' }]} // ★ 실제 경로 데이터 사용
+        <img 
+            src={navigationMap} 
+            alt="Navigation Map" 
+            className="w-full h-full object-cover" // 이미지가 화면을 꽉 채우도록 설정
         />
+        {/* 지도 위 그라데이션 (UI 잘 보이게) */}
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/90 to-transparent pointer-events-none"></div>
       </div>
