@@ -12,42 +12,57 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
 
   const formatDate = (date: Date) => {
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    return `2025.09.26(${days[5]})`;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dayName = days[date.getDay()];
+    return `${year}.${month}.${day}(${dayName})`;
   };
 
   const formatTime = (date: Date) => {
-    return "12:41";
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
+  // ★ 수정된 좌표 데이터 (광화문 교보문고 -> 서부 YMCA) ★
+  
+  // 1. 출발지: 교보문고 광화문점
+  const START_POS = { lat: 37.5704, lng: 126.9768 };
+  
+  // 2. 도착지: 서부 YMCA (상암동)
+  const END_POS = { lat: 37.5760, lng: 126.9015 }; 
+
+  // 3. 지도 중심 (두 지점의 중간쯤)
+  const MAP_CENTER = { lat: 37.5732, lng: 126.9390 };
+
+  // 4. 가상 경로 데이터 (파란 선)
+  // 실제로는 API로 받아오지만, 시연용으로 대략적인 경로 좌표를 찍었습니다.
   const mockRoutePath = [
-    { lat: 37.5665, lng: 126.9780 }, 
-    { lat: 37.5700, lng: 126.9750 },
-    { lat: 37.5750, lng: 126.9700 },
-    { lat: 37.5796, lng: 126.9770 }  
+    START_POS,                      // 교보문고
+    { lat: 37.5700, lng: 126.9600 }, // 서대문역 인근
+    { lat: 37.5600, lng: 126.9400 }, // 연대 앞
+    { lat: 37.5650, lng: 126.9100 }, // 망원동 인근
+    END_POS                         // 서부 YMCA
   ];
 
   return (
-    // ★ h-full w-full relative (부모 높이 꽉 채우기)
     <div className="w-full h-full relative bg-[#18181b] text-white font-sans flex flex-col overflow-hidden animate-fade-in">
       
-      {/* 1. 배경 지도 (가장 밑바닥 z-0) */}
+      {/* 1. 배경 지도 */}
       <div className="absolute inset-0 z-0">
         <MapView 
-            center={{ lat: 37.5730, lng: 126.9760 }}
-            level={5}
+            center={MAP_CENTER} // 지도의 중심
+            level={7} // 두 지점이 다 보이도록 줌 레벨 조정 (숫자가 클수록 멀리 보임)
             markers={[
-                { lat: 37.5665, lng: 126.9780, label: '출발' },
-                { lat: 37.5796, lng: 126.9770, label: '도착' }
+                { ...START_POS, label: '출발' },
+                { ...END_POS, label: '도착' }
             ]}
             polylines={[{ path: mockRoutePath, color: '#3b82f6' }]} 
         />
-        {/* 오버레이 */}
+        {/* 오버레이 (텍스트 가독성용) */}
         <div className="absolute inset-0 bg-black/40 pointer-events-none"></div>
       </div>
 
-      {/* ... (이하 나머지 코드는 동일하게 유지) ... */}
-      {/* 2. 상단 헤더, 3. 좌측 패널 등은 지도 위에 absolute로 떠 있음 */}
-      
+      {/* 2. 상단 헤더 */}
       <header className="absolute top-0 right-0 p-6 flex gap-6 text-zinc-300 text-sm font-medium z-20 pointer-events-none">
         <div className="flex gap-2 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md shadow-md">
             <span>날짜</span>
@@ -59,18 +74,21 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
         </div>
       </header>
 
+      {/* 3. 좌측 패널 */}
       <div className="absolute top-0 left-0 h-full w-[420px] p-6 flex flex-col z-10 bg-gradient-to-r from-black/80 to-transparent pointer-events-auto">
-        {/* (좌측 패널 내용은 아까와 동일) */}
         
+        {/* 출발/도착 정보 (텍스트 수정됨) */}
         <div className="space-y-4 mt-12 mb-6 pl-2">
             <div className="space-y-1">
                 <div className="flex items-center gap-2">
                      <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"></div>
                      <div className="text-xs text-zinc-300">현 위치</div>
                 </div>
-                <div className="text-zinc-100 text-sm pl-4 font-medium text-shadow">서울 중구 태평로 1가</div>
+                <div className="text-zinc-100 text-sm pl-4 font-medium text-shadow">교보문고 광화문점</div>
             </div>
+            
             <div className="h-6 w-0.5 bg-zinc-500/50 ml-3"></div>
+
             <div className="space-y-1">
                 <div className="flex items-center gap-2">
                      <MapPin size={14} className="text-red-500" fill="currentColor" />
@@ -80,7 +98,10 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
             </div>
         </div>
 
+        {/* 경로 옵션 카드들 */}
         <div className="flex-1 space-y-3 overflow-y-auto pr-2 pb-20 scrollbar-hide">
+            
+            {/* 카드 1: 친환경 경로 */}
             <button onClick={onStartNavigation} className="w-full bg-[#1e1d23]/90 backdrop-blur-md border-2 border-green-500/50 rounded-2xl p-5 text-left relative group hover:bg-[#2a2930] hover:scale-[1.02] transition-all shadow-xl">
                 <div className="absolute -top-3 -right-2 bg-green-600 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-md animate-bounce">추천</div>
                 <div className="flex items-center gap-2 mb-3">
@@ -99,6 +120,7 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
                 </div>
             </button>
 
+            {/* 카드 2: 일반 경로 */}
             <button onClick={onStartNavigation} className="w-full bg-[#1e1d23]/80 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-left hover:bg-[#2a2930] hover:scale-[1.02] transition-all shadow-lg">
                 <div className="flex items-center gap-2 mb-3">
                     <Navigation size={18} className="text-zinc-400" />
@@ -116,6 +138,7 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
                 </div>
             </button>
 
+            {/* 카드 3: 최단 시간 */}
             <button onClick={onStartNavigation} className="w-full bg-[#1e1d23]/80 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-left hover:bg-[#2a2930] hover:scale-[1.02] transition-all shadow-lg">
                 <div className="flex items-center gap-2 mb-3">
                     <Clock size={18} className="text-zinc-400" />
@@ -130,6 +153,7 @@ export default function Settings2({ onBack, onStartNavigation }: any) {
             </button>
         </div>
 
+        {/* 하단 닫기 버튼 */}
         <div className="mt-auto pt-4">
             <button onClick={onBack} className="w-full bg-red-500 hover:bg-red-600 text-white rounded-2xl py-4 font-bold shadow-lg shadow-red-900/20 flex items-center justify-center gap-2 transition-transform active:scale-95">
                 <X size={20} />
