@@ -1,196 +1,141 @@
-import { useEffect, useRef, useState } from "react"; // ✅ useState import 추가
-import { loadKakaoMaps } from "../lib/kakaoLoader";
+import React, { useEffect, useRef, useState } from 'react';
 
-type Coord = { lat: number; lng: number };
-
-type Marker = {
-  lat: number;
-  lng: number;
-  label: string;
-};
-
-type Polyline = {
-  path: Coord[];
-  color: string;
-};
-
-interface MapViewProps {
-  center: Coord;
-  markers?: Marker[];
-  polylines?: Polyline[];
-  level?: number;
+declare global {
+  interface Window {
+    kakao: any;
+  }
 }
 
-export default function MapView({ center, markers = [], polylines = [], level = 5 }: MapViewProps) {
-  console.log("🔵 MapView 렌더링됨!", { center, markers, polylines, level });
-  
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<kakao.maps.Map | null>(null);
-  const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]); 
-  const polylinesRef = useRef<kakao.maps.Polyline[]>([]);
-  
-  // 지도 객체 생성 완료 상태를 저장 (핵심: 시각화 로직 동기화)
-  const [mapLoaded, setMapLoaded] = useState(false); 
+interface MapViewProps {
+  center: { lat: number; lng: number };
+  level?: number;
+  markers?: { lat: number; lng: number; label?: string }[];
+  polylines?: { path: { lat: number; lng: number }[]; color?: string }[];
+}
 
-  // 1. 맵 초기화 (최초 1회만)
+export default function MapView({ center, level = 3, markers = [], polylines = [] }: MapViewProps) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const polylinesRef = useRef<any[]>([]);
+  
+  // 카카오 스크립트 로드 상태 확인용
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
+
+  // 1. 카카오맵 스크립트가 로드되었는지 감시
   useEffect(() => {
-    if (!containerRef.current || !center) {
-      console.log("⚠️ 컨테이너 또는 center가 없음", { containerRef: !!containerRef.current, center });
-      return;
+    const checkKakao = () => {
+      if (window.kakao && window.kakao.maps) {
+        setIsKakaoLoaded(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkKakao()) return;
+
+    const script = document.querySelector('script[src*="//dapi.kakao.com/v2/maps/sdk.js"]');
+    if (script) {
+        script.addEventListener('load', () => setIsKakaoLoaded(true));
+    } else {
+        // 혹시 index.html에 스크립트가 없다면 동적으로 추가 (비상용)
+        const newScript = document.createElement('script');
+        // .env 파일이 없다면 직접 키를 입력하거나, 없을 경우 오류 처리 필요
+        const appKey = import.meta.env.VITE_KAKAO_APPKEY; 
+        if (appKey) {
+            newScript.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&libraries=services&autoload=false`; // autoload=false 추가 중요!
+            newScript.onload = () => {
+                window.kakao.maps.load(() => setIsKakaoLoaded(true));
+            };
+            document.head.appendChild(newScript);
+        } else {
+            console.error("VITE_KAKAO_APPKEY is missing in .env");
+        }
     }
+    
+    // 타임아웃 설정 (스크립트 로드 실패 대비)
+    const timeoutId = setTimeout(() => {
+        if (!isKakaoLoaded && window.kakao && window.kakao.maps) {
+             setIsKakaoLoaded(true);
+        }
+    }, 2000);
 
-    let isCancelled = false;
-    console.log("🚀 맵 초기화 시작...", center);
+    return () => clearTimeout(timeoutId);
 
-    loadKakaoMaps()
-      .then(() => {
-        if (isCancelled || !containerRef.current) return;
-
-        console.log("🗺️ 지도 생성 중...", center);
-        const initialCenter = new kakao.maps.LatLng(center.lat, center.lng);
-        mapRef.current = new kakao.maps.Map(containerRef.current, {
-          center: initialCenter,
-          level: level,
-        });
-        
-        console.log("✅ 지도 초기화 완료!");
-        setMapLoaded(true); // 지도 로드 성공 시 상태 업데이트
-      })
-      .catch((err) => {
-        console.error("❌ 카카오맵 로드 실패:", err);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [center]);
-
-  // 2. 컴포넌트 언마운트 시 정리
-  useEffect(() => {
-    return () => {
-      overlaysRef.current.forEach(o => o.setMap(null)); 
-      polylinesRef.current.forEach(p => p.setMap(null));
-      overlaysRef.current = [];
-      polylinesRef.current = [];
-    };
   }, []);
 
-  // 3. 중심 좌표 및 줌 레벨 업데이트
+  // 2. 지도가 로드되면 초기화 및 그리기
   useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-    
-    const newCenter = new kakao.maps.LatLng(center.lat, center.lng);
-    mapRef.current.setCenter(newCenter);
-    mapRef.current.setLevel(3);
-    console.log("📍 지도 중심 이동 및 줌 레벨 변경:", center);
-  }, [center, mapLoaded]); 
+    if (!isKakaoLoaded || !mapContainer.current) return;
 
-  // 4. 줌 레벨 업데이트
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-    mapRef.current.setLevel(level);
-    console.log("🔍 줌 레벨 변경:", level);
-  }, [level, mapLoaded]); 
-
-  // 5. 마커 업데이트 (CustomOverlay만 사용)
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return; 
-    
-    // 기존 오버레이 제거
-    overlaysRef.current.forEach(overlay => overlay.setMap(null));
-    overlaysRef.current = [];
-
-    if (markers.length === 0) {
-      console.log("📍 마커 없음");
-      return;
-    }
-
-    console.log("📍 마커 추가:", markers.length + "개");
-
-    markers.forEach((markerData) => {
-      const position = new kakao.maps.LatLng(markerData.lat, markerData.lng);
-      
-      // 핀과 라벨을 포함하는 HTML 콘텐츠 생성
-      const content = `
-        <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-          <div style="
-            padding: 4px 8px;
-            background: white;
-            border: 2px solid #3b82f6;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            color: #1e40af;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            white-space: nowrap;
-            margin-bottom: 5px;
-          ">
-            ${markerData.label}
-          </div>
-          <img src="https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png" 
-               style="width: 25px; height: 35px;">
-        </div>
-      `;
-
-      const overlay = new kakao.maps.CustomOverlay({
-        map: mapRef.current!,
-        position: position,
-        content: content,
-        yAnchor: 1.6, 
-      });
-
-      overlaysRef.current.push(overlay);
+    // window.kakao.maps.load 콜백을 사용하여 API 로드 완료 후 실행 보장
+    window.kakao.maps.load(() => {
+        // 지도 생성 (이미 있으면 생략)
+        if (!mapInstance.current) {
+            const options = {
+              center: new window.kakao.maps.LatLng(center.lat, center.lng),
+              level: level,
+            };
+            mapInstance.current = new window.kakao.maps.Map(mapContainer.current, options);
+            
+            // 지도 생성 직후 리사이즈 한 번 해줌 (깨짐 방지)
+            mapInstance.current.relayout();
+            
+            // 초기 데이터 그리기
+            drawMapData();
+        } else {
+          // 이미 지도가 있으면 데이터만 다시 그리기
+          drawMapData();
+        }
     });
-  }, [markers, mapLoaded]); 
+  }, [isKakaoLoaded, center, level, markers, polylines]);
 
-  // 6. 폴리라인(경로선) 업데이트
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return; 
+  // 마커와 경로 그리는 함수 분리
+  const drawMapData = () => {
+    if (!mapInstance.current) return;
 
-    // 기존 폴리라인 제거
-    polylinesRef.current.forEach(polyline => polyline.setMap(null));
+    // 중심 이동
+    const moveLatLon = new window.kakao.maps.LatLng(center.lat, center.lng);
+    mapInstance.current.setCenter(moveLatLon);
+    mapInstance.current.setLevel(level);
+
+    // 기존 오버레이 삭제
+    markersRef.current.forEach(m => m.setMap(null));
+    polylinesRef.current.forEach(p => p.setMap(null));
+    markersRef.current = [];
     polylinesRef.current = [];
 
-    if (polylines.length === 0) return;
-
-    console.log("🛣️ 경로선 추가:", polylines.length + "개");
-
-    // 새 폴리라인 추가
-    polylines.forEach((polylineData) => {
-      if (polylineData.path.length < 2) return;
-
-      const linePath = polylineData.path.map(
-        coord => new kakao.maps.LatLng(coord.lat, coord.lng)
-      );
-
-      const polyline = new kakao.maps.Polyline({
-        map: mapRef.current!,
-        path: linePath,
-        strokeWeight: 5,
-        strokeColor: polylineData.color,
-        strokeOpacity: 0.8,
-        strokeStyle: "solid",
-      });
-
-      polylinesRef.current.push(polyline);
+    // 마커 추가
+    markers.forEach(marker => {
+      const position = new window.kakao.maps.LatLng(marker.lat, marker.lng);
       
-      // 경로가 그려지면 해당 영역으로 지도 범위 조정
-      const bounds = new kakao.maps.LatLngBounds();
-      linePath.forEach(point => bounds.extend(point));
-      mapRef.current!.setBounds(bounds);
+      const m = new window.kakao.maps.Marker({ 
+          position,
+      });
+      m.setMap(mapInstance.current);
+      markersRef.current.push(m);
     });
-  }, [polylines, mapLoaded]); 
+
+    // 경로 추가
+    polylines.forEach(line => {
+      const path = line.path.map(p => new window.kakao.maps.LatLng(p.lat, p.lng));
+      const polyline = new window.kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 8,
+        strokeColor: line.color || '#3b82f6',
+        strokeOpacity: 0.9,
+        strokeStyle: 'solid'
+      });
+      polyline.setMap(mapInstance.current);
+      polylinesRef.current.push(polyline);
+    });
+  };
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: "100%",
-        height: "60vh",
-        borderRadius: 12,
-        border: "1px solid #e5e7eb",
-        backgroundColor: "#f5f5f5",
-      }}
+    <div 
+        ref={mapContainer} 
+        className="w-full h-full relative z-0 bg-[#2e2e33]" // 로딩 전엔 회색 배경
+        style={{ minHeight: '100%' }} // 높이 강제 설정 추가
     />
   );
 }
