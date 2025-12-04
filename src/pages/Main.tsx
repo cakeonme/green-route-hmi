@@ -78,36 +78,16 @@ export default function Main() {
          </div>
       </div>
 
-      {/* [하단] 컨트롤 바 */}
-      <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between px-10 pb-4 z-30 pointer-events-auto">
-        <div className="flex items-center gap-8">
-            <button className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition">
-                <Home size={24} />
-                <span className="text-[10px]">Home</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition">
-                <Settings size={24} />
-                <span className="text-[10px]">Settings</span>
-            </button>
-            
-            <button className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/30 transform -translate-y-2">
-                <Navigation size={28} fill="currentColor" />
-            </button>
+<div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-end px-10 pb-4 z-30 pointer-events-auto">
+  <button 
+    onClick={() => window.location.reload()} 
+    className="bg-[#1e1d23]/80 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white px-6 py-3 rounded-full font-medium text-sm backdrop-blur-md flex items-center gap-2 transition-all"
+  >
+    <X size={16} />
+    안내 중지
+  </button>
+</div>
 
-            <button className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition">
-                <FileText size={24} />
-                <span className="text-[10px]">Report</span>
-            </button>
-        </div>
-
-        <button 
-            onClick={() => window.location.reload()} 
-            className="bg-[#1e1d23]/80 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white px-6 py-3 rounded-full font-medium text-sm backdrop-blur-md flex items-center gap-2 transition-all"
-        >
-            <X size={16} />
-            안내 중지
-        </button>
-      </div>
 
     </div>
   );
